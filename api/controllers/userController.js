@@ -23,43 +23,40 @@ class UserController extends GlobalController {
   }
 
   async create(req, res) {
-    const { firstName, lastName, age, email, password } = req.body;
-
-    if (!firstName || !lastName || !email || !password) {
-      return res.status(400).json({ message: "All fields are required" });
-    }
-
-    if (age < 13) {
-      return res
-        .status(400)
-        .json({ message: "User must be atleast 13 years old" });
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ message: "Insert a valid email" });
-    }
-
-    const existingUser = await this.dao.findOne({ email });
-    if (existingUser) {
-      return res.status(409).json({ message: "Email already registered" });
-    }
-
+    const session = await this.dao.model.db.startSession();
     try {
-      const hashedPassword = await bcrypt.hash(password, 10);
+      await session.withTransaction(async () => {
+        const user = await this.dao.create(req.body);
 
-      const userData = { ...req.body, password: hashedPassword };
+        const listData = {
+          title: "Tasks",
+          user: user._id,
+        };
 
-      await this.dao.create(userData);
+        await ListDAO.create(listData, { session });
+      });
 
       return res.status(201).json({ message: "Registered successfully" });
     } catch (err) {
+      if (err.name === "ValidationError") {
+        const firstMessage = Object.values(err.errors)[0].message;
+        return res.status(400).json({ message: firstMessage });
+      }
+
+      if (err.code === 11000) {
+        return res.status(409).json({
+          message: "Email already registered",
+        });
+      }
+
       if (process.env.NODE_ENV === "development") {
         console.log(`Internal server error: ${err.message}`);
       }
       res
         .status(500)
         .json({ message: "Internal server error, try again later" });
+    } finally {
+      session.endSession();
     }
   }
 
@@ -73,7 +70,7 @@ class UserController extends GlobalController {
     }
 
     try {
-      const user = await this.dao.findOne({ email });
+      const user = await this.dao.findByEmail(email);
       if (!user) {
         return res
           .status(401)
@@ -94,6 +91,31 @@ class UserController extends GlobalController {
       );
 
       return res.status(200).json({ token });
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") {
+        console.log(`Internal server error: ${err.message}`);
+      }
+      res
+        .status(500)
+        .json({ message: "Internal server error, try again later" });
+    }
+  }
+
+  async profile(req, res) {
+    try {
+      const userId = req.user.id;
+
+      const user = await this.dao.read(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      return res.status(200).json({
+        firstName: user.firstName,
+        lastName: user.lastName,
+        age: user.age,
+        email: user.email,
+      });
     } catch (err) {
       if (process.env.NODE_ENV === "development") {
         console.log(`Internal server error: ${err.message}`);

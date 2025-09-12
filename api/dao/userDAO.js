@@ -18,10 +18,20 @@ class UserDAO extends GlobalDAO {
   constructor() {
     super(User);
   }
+
+  /**
+   * Finds a user document by email.
+   *
+   * @async
+   * @param {string} email - The email of the user to search for.
+   * @returns {Promise<Object|null>} Returns a Promise that resolves to the user document if found, or `null` if no user exists with the given email.
+   */
+  async findByEmail(email) {
+    return this.model.findOne({ email });
+  }
 }
 
 /**
  * Export a singleton instance of UserDAO.
-
  */
 module.exports = new UserDAO();

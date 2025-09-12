@@ -26,4 +26,7 @@ function authenticateToken(req, res, next) {
   });
 }
 
+/**
+ * Export a singleton instance of authenticateToken.
+ */
 module.exports = authenticateToken;
