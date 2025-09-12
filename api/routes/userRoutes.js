@@ -5,29 +5,14 @@ const authenticateToken = require("../middlewares/auth");
 const UserController = require("../controllers/userController");
 
 /**
- * @route GET /users
- * @description Retrieve all users.
- * @access Public
- */
-router.get("/", (req, res) => UserController.getAll(req, res));
-
-/**
  * @route GET /users/profile
  * @description Retrieve a user's profile info by ID.
  * @param {string} id - The unique identifier of the user.
  * @access Public
  */
-router.get("/profile", authenticateToken, (req, res) =>
-  UserController.profile(req, res),
+router.get("/user-profile", authenticateToken, (req, res) =>
+  UserController.getUserProfile(req, res),
 );
-
-/**
- * @route GET /users/:id
- * @description Retrieve a user by ID.
- * @param {string} id - The unique identifier of the user.
- * @access Public
- */
-router.get("/:id", (req, res) => UserController.read(req, res));
 
 /**
  * @route POST /users/
@@ -39,7 +24,7 @@ router.get("/:id", (req, res) => UserController.read(req, res));
  * @body {string} password - The password of the user.
  * @access Public
  */
-router.post("/", (req, res) => UserController.create(req, res));
+router.post("/", (req, res) => UserController.registerUser(req, res));
 
 /**
  * @route POST /users/login
@@ -48,25 +33,29 @@ router.post("/", (req, res) => UserController.create(req, res));
  * @body {string} password - The user's password.
  * @access Public
  */
-router.post("/login", (req, res) => UserController.login(req, res));
+router.post("/login", (req, res) => UserController.loginUser(req, res));
 
 /**
- * @route PUT /users/:id
+ * @route PUT /users/update-profile
  * @description Update an existing user by ID.
  * @param {string} id - The unique identifier of the user.
  * @body {string} [username] - Updated username (optional).
  * @body {string} [password] - Updated password (optional).
  * @access Public
  */
-router.put("/:id", (req, res) => UserController.update(req, res));
+router.put("/update-profile", authenticateToken, (req, res) =>
+  UserController.updateUserProfile(req, res),
+);
 
 /**
- * @route DELETE /users/:id
+ * @route DELETE /users/delete-user
  * @description Delete a user by ID.
  * @param {string} id - The unique identifier of the user.
  * @access Public
  */
-router.delete("/:id", (req, res) => UserController.delete(req, res));
+router.delete("/delete-user", authenticateToken, (req, res) =>
+  UserController.deleteUser(req, res),
+);
 
 /**
  * @route POST /users/forgot-password

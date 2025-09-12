@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const authenticateToken = require("../middlewares/auth");
 
 const ListController = require("../controllers/listController");
 
@@ -9,7 +10,9 @@ const ListController = require("../controllers/listController");
  * @param {string} id - The unique identifier of the list.
  * @access Public
  */
-router.get("/:id", (req, res) => ListController.read(req, res));
+router.get("/:id", authenticateToken, (req, res) =>
+  ListController.read(req, res),
+);
 
 /**
  * @route POST /lists
@@ -18,7 +21,9 @@ router.get("/:id", (req, res) => ListController.read(req, res));
  * @body {string} user - The ID of the user who owns this list (refers to a User document).
  * @access Public
  */
-router.post("/", (req, res) => ListController.create(req, res));
+router.post("/", authenticateToken, (req, res) =>
+  ListController.createList(req, res),
+);
 
 /**
  * @route PUT /lists/:id
@@ -27,7 +32,9 @@ router.post("/", (req, res) => ListController.create(req, res));
  * @body {string} [title] - Updated title (optional).
  * @access Public
  */
-router.put("/:id", (req, res) => ListController.update(req, res));
+router.put("/:id", authenticateToken, (req, res) =>
+  ListController.update(req, res),
+);
 
 /**
  * @route DELETE /lists/:id
@@ -35,15 +42,9 @@ router.put("/:id", (req, res) => ListController.update(req, res));
  * @param {string} id - The unique identifier of the list.
  * @access Public
  */
-router.delete("/:id", (req, res) => ListController.delete(req, res));
-
-/**
- * @route GET /lists/user/:id
- * @description Retrieve all tasks related to a given user.
- * @param {string} id - The unique identifier of the user.
- * @access Public
- */
-router.get("user/:id", (req, res) => ListController.read(req, res));
+router.delete("/:id", authenticateToken, (req, res) =>
+  ListController.delete(req, res),
+);
 
 /**
  * Export the router instance to be mounted in the main routes file.

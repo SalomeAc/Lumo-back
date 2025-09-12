@@ -34,10 +34,11 @@ class UserController extends GlobalController {
    *   - 409: Duplicate email
    *   - 500: Internal server error
    */
-  async create(req, res) {
+  async registerUser(req, res) {
     const session = await this.dao.model.db.startSession();
     try {
       await session.withTransaction(async () => {
+        // Transaction init
         const user = await this.dao.create(req.body);
 
         const listData = {
@@ -66,7 +67,7 @@ class UserController extends GlobalController {
         .status(500)
         .json({ message: "Internal server error, try again later" });
     } finally {
-      session.endSession();
+      session.endSession(); // Transaction end
     }
   }
 
@@ -82,7 +83,7 @@ class UserController extends GlobalController {
    *   - 401: Email or password incorrect
    *   - 500: Internal server error
    */
-  async login(req, res) {
+  async loginUser(req, res) {
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -135,13 +136,8 @@ class UserController extends GlobalController {
    *   - 200: Returns user profile `{ firstName, lastName, age, email }`
    *   - 404: User not found
    *   - 500: Internal server error
-   *
-   * @example
-   * GET /users/profile
-   * Headers: { Authorization: "Bearer <token>" }
-   * Response: { firstName, lastName, age, email }
    */
-  async profile(req, res) {
+  async getUserProfile(req, res) {
     try {
       const userId = req.user.id;
 
@@ -155,6 +151,84 @@ class UserController extends GlobalController {
         lastName: user.lastName,
         age: user.age,
         email: user.email,
+      });
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") {
+        console.log(`Internal server error: ${err.message}`);
+      }
+      res
+        .status(500)
+        .json({ message: "Internal server error, try again later" });
+    }
+  }
+
+  /**
+   * Updates the profile of the authenticated user.
+   *
+   * Retrieves the user ID from the decoded JWT token (`req.user.id`) and
+   * updates the user's document in the database with the data provided
+   * in `req.body`. Only updates fields allowed by the model validators.
+   *
+   * @async
+   * @param {import("express").Request} req - Express request object. The body should
+   * contain the fields to update (e.g., firstName, lastName, age, email, password).
+   * @param {import("express").Response} res - Express response object.
+   * @returns {Promise<void>} Sends a JSON response with a success message or an error.
+   */
+  async updateUserProfile(req, res) {
+    try {
+      const userId = req.user.id;
+
+      const user = await this.dao.read(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const allowedFieldsToUpdate = ["firstName", "lastName", "age", "email"];
+      const updates = {};
+      for (const key of allowedFieldsToUpdate) {
+        if (req.body[key] !== undefined) updates[key] = req.body[key];
+      }
+
+      await this.dao.update(userId, updates);
+
+      return res.status(200).json({
+        message: "Profile successfully updated",
+      });
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") {
+        console.log(`Internal server error: ${err.message}`);
+      }
+      res
+        .status(500)
+        .json({ message: "Internal server error, try again later" });
+    }
+  }
+
+  /**
+   * Deletes the profile of the authenticated user.
+   *
+   * Retrieves the user ID from the decoded JWT token (`req.user.id`) and
+   * deletes the user's document from the database.
+   *
+   * @async
+   * @param {import("express").Request} req - Express request object.
+   * @param {import("express").Response} res - Express response object.
+   * @returns {Promise<void>} Sends a JSON response with a success message or an error.
+   */
+  async deleteUser(req, res) {
+    try {
+      const userId = req.user.id;
+
+      const user = await this.dao.read(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      await this.dao.delete(userId);
+
+      return res.status(200).json({
+        message: "Profile successfully deleted",
       });
     } catch (err) {
       if (process.env.NODE_ENV === "development") {
