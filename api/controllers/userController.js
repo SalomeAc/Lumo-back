@@ -22,6 +22,18 @@ class UserController extends GlobalController {
     super(UserDAO);
   }
 
+  /**
+   * Registers a new user and creates a default task list for them.
+   *
+   * @async
+   * @param {import("express").Request} req - Express request object containing user data in `req.body`
+   * @param {import("express").Response} res - Express response object
+   * @returns {Promise<void>} Returns HTTP status codes:
+   *   - 201: User created successfully
+   *   - 400: Validation error (e.g., required fields missing or invalid)
+   *   - 409: Duplicate email
+   *   - 500: Internal server error
+   */
   async create(req, res) {
     const session = await this.dao.model.db.startSession();
     try {
@@ -44,9 +56,7 @@ class UserController extends GlobalController {
       }
 
       if (err.code === 11000) {
-        return res.status(409).json({
-          message: "Email already registered",
-        });
+        return res.status(409).json({ message: "Email already registered" });
       }
 
       if (process.env.NODE_ENV === "development") {
@@ -60,6 +70,18 @@ class UserController extends GlobalController {
     }
   }
 
+  /**
+   * Authenticates a user with email and password, returning a JWT token.
+   *
+   * @async
+   * @param {import("express").Request} req - Express request object containing `email` and `password` in `req.body`
+   * @param {import("express").Response} res - Express response object
+   * @returns {Promise<void>} Returns HTTP status codes:
+   *   - 200: Login successful, returns `{ token }`
+   *   - 400: Missing email or password
+   *   - 401: Email or password incorrect
+   *   - 500: Internal server error
+   */
   async login(req, res) {
     const { email, password } = req.body;
 
@@ -101,6 +123,24 @@ class UserController extends GlobalController {
     }
   }
 
+  /**
+   * Retrieves the profile information of the currently authenticated user.
+   *
+   * Requires authentication via {@link authenticateToken}.
+   *
+   * @async
+   * @param {import("express").Request} req - Express request object, `req.user` contains decoded JWT info
+   * @param {import("express").Response} res - Express response object
+   * @returns {Promise<void>} Returns HTTP status codes:
+   *   - 200: Returns user profile `{ firstName, lastName, age, email }`
+   *   - 404: User not found
+   *   - 500: Internal server error
+   *
+   * @example
+   * GET /users/profile
+   * Headers: { Authorization: "Bearer <token>" }
+   * Response: { firstName, lastName, age, email }
+   */
   async profile(req, res) {
     try {
       const userId = req.user.id;

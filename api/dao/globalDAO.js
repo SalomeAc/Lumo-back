@@ -31,11 +31,9 @@ class GlobalDAO {
    * @async
    * @param {string} id - The document's unique identifier.
    * @returns {Promise<Object>} The found document.
-   * @throws {Error} If not found or database errors occur.
    */
   async read(id) {
     const document = await this.model.findById(id);
-    if (!document) throw new Error("Document not found");
     return document;
   }
 
@@ -45,14 +43,12 @@ class GlobalDAO {
    * @param {string} id - The document's unique identifier.
    * @param {Object} updateData - The data to update the document with.
    * @returns {Promise<Object>} The updated document.
-   * @throws {Error} If not found or validation errors occur.
    */
   async update(id, updateData) {
     const updatedDocument = await this.model.findByIdAndUpdate(id, updateData, {
       new: true,
       runValidators: true,
     });
-    if (!updatedDocument) throw new Error("Document not found");
     return updatedDocument;
   }
 
@@ -61,11 +57,9 @@ class GlobalDAO {
    * @async
    * @param {string} id - The document's unique identifier.
    * @returns {Promise<Object>} The deleted document.
-   * @throws {Error} If not found or database errors occur.
    */
   async delete(id) {
     const deletedDocument = await this.model.findByIdAndDelete(id);
-    if (!deletedDocument) throw new Error("Document not found");
     return deletedDocument;
   }
 
