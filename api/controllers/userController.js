@@ -38,6 +38,13 @@ class UserController extends GlobalController {
     const session = await this.dao.model.db.startSession();
     try {
       await session.withTransaction(async () => {
+        const password = req.body.password;
+        const confirmPassword = req.body.confirmPassword;
+
+        if (password !== confirmPassword) {
+          return res.status(400).json({ message: "Passwords don't match" });
+        }
+
         // Transaction init
         const user = await this.dao.create(req.body);
 
