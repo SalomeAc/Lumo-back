@@ -37,6 +37,12 @@ const UserSchema = new mongoose.Schema({
       "Password must be at least 8 characters long and include uppercase, lowercase, number, and special character",
     ],
   },
+  resetPasswordToken: {
+    type: String,
+  },
+  resetPasswordExpires: {
+    type: Date,
+  },
 });
 
 /**
@@ -47,7 +53,11 @@ UserSchema.pre("save", async function (next) {
     this.password = await bcrypt.hash(this.password, 10);
   }
   next();
+
+  
 });
+
+
 
 /**
  * Mongoose model for the User collection.
