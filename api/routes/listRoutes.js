@@ -11,7 +11,7 @@ const ListController = require("../controllers/listController");
  * @access Public
  */
 router.get("/get-tasks/:id", authenticateToken, (req, res) =>
-  ListController.read(req, res),
+  ListController.getListTasks(req, res),
 );
 
 /**

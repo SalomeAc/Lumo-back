@@ -1,6 +1,7 @@
 const GlobalController = require("./globalController");
 const ListDAO = require("../dao/listDAO");
 const UserDAO = require("../dao/userDAO");
+const TaskDAO = require("../dao/taskDAO");
 
 /**
  * Controller class for managing List resources.
@@ -156,7 +157,6 @@ class ListController extends GlobalController {
         return res.status(404).json({ message: "List not found" });
       }
 
-      // Only the user owner of the list is allowed to perform this action.
       if (list.user.toString() !== userId) {
         return res.status(403).json({ message: "Forbidden action" });
       }
@@ -166,6 +166,59 @@ class ListController extends GlobalController {
       return res.status(200).json({
         message: "List successfully deleted",
       });
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") {
+        console.log(`Internal server error: ${err.message}`);
+      }
+      res
+        .status(500)
+        .json({ message: "Internal server error, try again later" });
+    }
+  }
+
+  /**
+   * Retrieve all tasks associated with a specific list.
+   *
+   * Validates that the requesting user exists and is the owner of the list,
+   * then retrieves all tasks linked to that list.
+   *
+   * @async
+   * @function getListTasks
+   * @param {import("express").Request} req - Express request object. Must include
+   * the list ID in `req.params.id`.
+   * @param {Object} req.user - Authenticated user data.
+   * @param {string} req.user.id - ID of the authenticated user.
+   * @param {Object} req.params - URL parameters.
+   * @param {string} req.params.id - ID of the list whose tasks are to be retrieved.
+   * @param {import("express").Response} res - Express response object.
+   * @returns {Promise<void>} Responds with:
+   * - 200 and an array of tasks if successful.
+   * - 403 if the list does not belong to the user.
+   * - 404 if the user or list does not exist.
+   * - 500 if an internal server error occurs.
+   */
+  async getListTasks(req, res) {
+    try {
+      const userId = req.user.id;
+      const listId = req.params.id;
+
+      const user = await UserDAO.read(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const list = await this.dao.read(listId);
+      if (!list) {
+        return res.status(404).json({ message: "List not found" });
+      }
+
+      if (list.user.toString() !== userId) {
+        return res.status(403).json({ message: "Forbidden action" });
+      }
+
+      const tasks = await TaskDAO.getAll({ list: listId });
+
+      return res.status(200).json(tasks);
     } catch (err) {
       if (process.env.NODE_ENV === "development") {
         console.log(`Internal server error: ${err.message}`);
