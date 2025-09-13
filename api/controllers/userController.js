@@ -84,15 +84,15 @@ class UserController extends GlobalController {
    *   - 500: Internal server error
    */
   async loginUser(req, res) {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Email and password are required" });
-    }
-
     try {
+      const { email, password } = req.body;
+
+      if (!email || !password) {
+        return res
+          .status(400)
+          .json({ message: "Email and password are required" });
+      }
+
       const user = await this.dao.findByEmail(email);
       if (!user) {
         return res
@@ -184,7 +184,7 @@ class UserController extends GlobalController {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const allowedFieldsToUpdate = ["firstName", "lastName", "age", "email"];
+      const allowedFieldsToUpdate = ["firstName", "lastName", "age", "email"]; // Only allows these fields to be updated.
       const updates = {};
       for (const key of allowedFieldsToUpdate) {
         if (req.body[key] !== undefined) updates[key] = req.body[key];
@@ -196,6 +196,15 @@ class UserController extends GlobalController {
         message: "Profile successfully updated",
       });
     } catch (err) {
+      if (err.name === "ValidationError") {
+        const firstMessage = Object.values(err.errors)[0].message;
+        return res.status(400).json({ message: firstMessage });
+      }
+
+      if (err.code === 11000) {
+        return res.status(409).json({ message: "Email already registered" });
+      }
+
       if (process.env.NODE_ENV === "development") {
         console.log(`Internal server error: ${err.message}`);
       }

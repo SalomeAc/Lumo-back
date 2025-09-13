@@ -20,6 +20,8 @@ class ListController extends GlobalController {
     super(ListDAO);
   }
 
+  // To Do: test duplicated names in lists.
+
   /**
    * Creates a new list for the authenticated user.
    *
@@ -45,6 +47,10 @@ class ListController extends GlobalController {
       }
 
       await this.dao.create({ ...req.body, user: userId });
+
+      return res.status(200).json({
+        message: "List successfully created",
+      });
     } catch (err) {
       if (err.name === "ValidationError") {
         const firstMessage = Object.values(err.errors)[0].message;
@@ -57,6 +63,86 @@ class ListController extends GlobalController {
           .json({ message: "There already exist a list with said title" });
       }
 
+      if (process.env.NODE_ENV === "development") {
+        console.log(`Internal server error: ${err.message}`);
+      }
+      res
+        .status(500)
+        .json({ message: "Internal server error, try again later" });
+    }
+  }
+
+  async updateList(req, res) {
+    try {
+      const userId = req.user.id;
+      const listId = req.params.id;
+
+      const user = await UserDAO.read(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const list = await this.dao.read(listId);
+      if (!list) {
+        return res.status(404).json({ message: "List not found" });
+      }
+
+      if (list.user.toString() !== userId) {
+        return res.status(403).json({ message: "Forbidden action" });
+      }
+
+      await this.dao.update(listId, { title: req.body.title });
+
+      return res.status(200).json({
+        message: "List successfully updated",
+      });
+    } catch (err) {
+      if (err.name === "ValidationError") {
+        const firstMessage = Object.values(err.errors)[0].message;
+        return res.status(400).json({ message: firstMessage });
+      }
+
+      if (err.code === 11000) {
+        return res
+          .status(409)
+          .json({ message: "There already exist a list with said title" });
+      }
+
+      if (process.env.NODE_ENV === "development") {
+        console.log(`Internal server error: ${err.message}`);
+      }
+      res
+        .status(500)
+        .json({ message: "Internal server error, try again later" });
+    }
+  }
+
+  async deleteList(req, res) {
+    try {
+      const userId = req.user.id;
+      const listId = req.params.id;
+
+      const user = await UserDAO.read(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const list = await this.dao.read(listId);
+      if (!list) {
+        return res.status(404).json({ message: "List not found" });
+      }
+
+      // Only the user owner of the list is allowed to perform this action.
+      if (list.user.toString() !== userId) {
+        return res.status(403).json({ message: "Forbidden action" });
+      }
+
+      await this.dao.delete(listId);
+
+      return res.status(200).json({
+        message: "List successfully deleted",
+      });
+    } catch (err) {
       if (process.env.NODE_ENV === "development") {
         console.log(`Internal server error: ${err.message}`);
       }

@@ -33,7 +33,7 @@ router.post("/", authenticateToken, (req, res) =>
  * @access Public
  */
 router.put("/:id", authenticateToken, (req, res) =>
-  ListController.update(req, res),
+  ListController.updateList(req, res),
 );
 
 /**
@@ -43,7 +43,7 @@ router.put("/:id", authenticateToken, (req, res) =>
  * @access Public
  */
 router.delete("/:id", authenticateToken, (req, res) =>
-  ListController.delete(req, res),
+  ListController.deleteList(req, res),
 );
 
 /**
