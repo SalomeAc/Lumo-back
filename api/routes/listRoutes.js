@@ -10,7 +10,7 @@ const ListController = require("../controllers/listController");
  * @param {string} id - The unique identifier of the list.
  * @access Public
  */
-router.get("/:id", authenticateToken, (req, res) =>
+router.get("/get-tasks/:id", authenticateToken, (req, res) =>
   ListController.read(req, res),
 );
 

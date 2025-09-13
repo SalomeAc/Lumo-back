@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const authenticateToken = require("../middlewares/auth");
 
 const TaskController = require("../controllers/taskController");
 
@@ -14,7 +15,9 @@ const TaskController = require("../controllers/taskController");
  * @body {string} user - The ID of the user who owns this task (refers to a User document).
  * @access Public
  */
-router.post("/", (req, res) => TaskController.create(req, res));
+router.post("/", authenticateToken, (req, res) =>
+  TaskController.createTask(req, res),
+);
 
 /**
  * @route PUT /tasks/:id
@@ -26,7 +29,9 @@ router.post("/", (req, res) => TaskController.create(req, res));
  * @body {date} [dueDate] - Updated due date (optional).
  * @access Public
  */
-router.put("/:id", (req, res) => TaskController.update(req, res));
+router.put("/:id", authenticateToken, (req, res) =>
+  TaskController.updateTask(req, res),
+);
 
 /**
  * @route DELETE /tasks/:id
@@ -34,7 +39,9 @@ router.put("/:id", (req, res) => TaskController.update(req, res));
  * @param {string} id - The unique identifier of the task.
  * @access Public
  */
-router.delete("/:id", (req, res) => TaskController.delete(req, res));
+router.delete("/:id", authenticateToken, (req, res) =>
+  TaskController.deleteTask(req, res),
+);
 
 /**
  * Export the router instance to be mounted in the main routes file.

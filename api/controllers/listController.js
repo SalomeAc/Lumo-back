@@ -20,8 +20,6 @@ class ListController extends GlobalController {
     super(ListDAO);
   }
 
-  // To Do: test duplicated names in lists.
-
   /**
    * Creates a new list for the authenticated user.
    *
@@ -72,6 +70,19 @@ class ListController extends GlobalController {
     }
   }
 
+  /**
+   * Updates an existing list by its ID.
+   *
+   * Ensures that the authenticated user exists and is the owner
+   * of the list before applying updates. Only the `title` field can
+   * be updated. Handles validation errors and duplicate title conflicts.
+   *
+   * @async
+   * @param {import("express").Request} req - Express request object. Must include
+   * the list ID in `req.params.id`. The body may contain an updated `title`.
+   * @param {import("express").Response} res - Express response object.
+   * @returns {Promise<void>} Sends a JSON response indicating success or an error message.
+   */
   async updateList(req, res) {
     try {
       const userId = req.user.id;
@@ -117,6 +128,19 @@ class ListController extends GlobalController {
     }
   }
 
+  /**
+   * Deletes an existing list by its ID.
+   *
+   * Ensures that the authenticated user exists and is the owner
+   * of the list before performing the deletion. Only the list owner
+   * is allowed to delete it.
+   *
+   * @async
+   * @param {import("express").Request} req - Express request object. Must include
+   * the list ID in `req.params.id`.
+   * @param {import("express").Response} res - Express response object.
+   * @returns {Promise<void>} Sends a JSON response indicating success or an error message.
+   */
   async deleteList(req, res) {
     try {
       const userId = req.user.id;
