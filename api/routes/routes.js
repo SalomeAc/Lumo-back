@@ -24,6 +24,6 @@ router.use("/lists", listRoutes);
 
 /**
  * Export the main router instance.
- * This is imported in `index.js` and mounted under `/api/v1`.
+ * This is imported in `index.js` and mounted under `/api/`.
  */
 module.exports = router;
