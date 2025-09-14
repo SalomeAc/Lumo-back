@@ -1,0 +1,391 @@
+const GlobalController = require("./globalController");
+const UserDAO = require("../dao/userDAO");
+const ListDAO = require("../dao/listDAO");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
+const { sendMail } = require("../utils/mailer");
+
+/**
+ * Controller class for managing User resources.
+ *
+ * Extends the generic {@link GlobalController} to inherit
+ * CRUD operations, using the {@link UserDAO} as the data access layer.
+ */
+class UserController extends GlobalController {
+  /**
+   * Create a new UserController instance.
+   *
+   * The constructor passes the UserDAO to the parent class so that
+   * all inherited methods (create, read, update, delete, getAll)
+   * operate on the User model.
+   */
+  constructor() {
+    super(UserDAO);
+  }
+
+  /**
+   * Registers a new user and creates a default task list for them.
+   *
+   * @async
+   * @param {import("express").Request} req - Express request object containing user data in `req.body`
+   * @param {import("express").Response} res - Express response object
+   * @returns {Promise<void>} Returns HTTP status codes:
+   *   - 201: User created successfully
+   *   - 400: Validation error (e.g., required fields missing or invalid)
+   *   - 409: Duplicate email
+   *   - 500: Internal server error
+   */
+  async registerUser(req, res) {
+    const { password, confirmPassword, ...rest } = req.body;
+    if (password !== confirmPassword) {
+      return res.status(400).json({ message: "Passwords do not match" });
+    }
+    const session = await this.dao.model.db.startSession();
+    try {
+      await session.withTransaction(async () => {
+        const password = req.body.password;
+        const confirmPassword = req.body.confirmPassword;
+
+        if (password !== confirmPassword) {
+          return res.status(400).json({ message: "Passwords don't match" });
+        }
+
+        // Transaction init
+        const user = await this.dao.create({ ...rest, password });
+
+        const listData = {
+          title: "Tasks",
+          user: user._id,
+        };
+
+        await ListDAO.create(listData, { session });
+      });
+
+      return res.status(201).json({ message: "Registered successfully" });
+    } catch (err) {
+      if (err.name === "ValidationError") {
+        const firstMessage = Object.values(err.errors)[0].message;
+        return res.status(400).json({ message: firstMessage });
+      }
+
+      if (err.code === 11000) {
+        return res.status(409).json({ message: "Email already registered" });
+      }
+
+      if (process.env.NODE_ENV === "development") {
+        console.log(`Internal server error: ${err.message}`);
+      }
+      res
+        .status(500)
+        .json({ message: "Internal server error, try again later" });
+    } finally {
+      session.endSession(); // Transaction end
+    }
+  }
+
+  /**
+   * Authenticates a user with email and password, returning a JWT token.
+   *
+   * @async
+   * @param {import("express").Request} req - Express request object containing `email` and `password` in `req.body`
+   * @param {import("express").Response} res - Express response object
+   * @returns {Promise<void>} Returns HTTP status codes:
+   *   - 200: Login successful, returns `{ token }`
+   *   - 400: Missing email or password
+   *   - 401: Email or password incorrect
+   *   - 500: Internal server error
+   */
+  async loginUser(req, res) {
+    try {
+      const { email, password } = req.body;
+
+      if (!email || !password) {
+        return res
+          .status(400)
+          .json({ message: "Email and password are required" });
+      }
+
+      const user = await this.dao.findByEmail(email);
+      if (!user) {
+        return res
+          .status(401)
+          .json({ message: "Email or password are incorrect" });
+      }
+
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        return res
+          .status(401)
+          .json({ message: "Email or password are incorrect" });
+      }
+
+      const token = jwt.sign(
+        { id: user._id, email: user.email },
+        process.env.JWT_SECRET,
+        { expiresIn: "1h" },
+      );
+
+      return res.status(200).json({ token });
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") {
+        console.log(`Internal server error: ${err.message}`);
+      }
+      res
+        .status(500)
+        .json({ message: "Internal server error, try again later" });
+    }
+  }
+
+  /**
+   * Retrieves the profile information of the currently authenticated user.
+   *
+   * Requires authentication via {@link authenticateToken}.
+   *
+   * @async
+   * @param {import("express").Request} req - Express request object, `req.user` contains decoded JWT info
+   * @param {import("express").Response} res - Express response object
+   * @returns {Promise<void>} Returns HTTP status codes:
+   *   - 200: Returns user profile `{ firstName, lastName, age, email }`
+   *   - 404: User not found
+   *   - 500: Internal server error
+   */
+  async getUserProfile(req, res) {
+    try {
+      const userId = req.user.id;
+
+      const user = await this.dao.read(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      return res.status(200).json({
+        firstName: user.firstName,
+        lastName: user.lastName,
+        age: user.age,
+        email: user.email,
+      });
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") {
+        console.log(`Internal server error: ${err.message}`);
+      }
+      res
+        .status(500)
+        .json({ message: "Internal server error, try again later" });
+    }
+  }
+
+  /**
+   * Updates the profile of the authenticated user.
+   *
+   * Retrieves the user ID from the decoded JWT token (`req.user.id`) and
+   * updates the user's document in the database with the data provided
+   * in `req.body`. Only updates fields allowed by the model validators.
+   *
+   * @async
+   * @param {import("express").Request} req - Express request object. The body should
+   * contain the fields to update (e.g., firstName, lastName, age, email, password).
+   * @param {import("express").Response} res - Express response object.
+   * @returns {Promise<void>} Sends a JSON response with a success message or an error.
+   */
+  async updateUserProfile(req, res) {
+    try {
+      const userId = req.user.id;
+
+      const user = await this.dao.read(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const allowedFieldsToUpdate = ["firstName", "lastName", "age", "email"]; // Only allows these fields to be updated.
+      const updates = {};
+      for (const key of allowedFieldsToUpdate) {
+        if (req.body[key] !== undefined) updates[key] = req.body[key];
+      }
+
+      await this.dao.update(userId, updates);
+
+      return res.status(200).json({
+        message: "Profile successfully updated",
+      });
+    } catch (err) {
+      if (err.name === "ValidationError") {
+        const firstMessage = Object.values(err.errors)[0].message;
+        return res.status(400).json({ message: firstMessage });
+      }
+
+      if (err.code === 11000) {
+        return res.status(409).json({ message: "Email already registered" });
+      }
+
+      if (process.env.NODE_ENV === "development") {
+        console.log(`Internal server error: ${err.message}`);
+      }
+      res
+        .status(500)
+        .json({ message: "Internal server error, try again later" });
+    }
+  }
+
+  /**
+   * Deletes the profile of the authenticated user.
+   *
+   * Retrieves the user ID from the decoded JWT token (`req.user.id`) and
+   * deletes the user's document from the database.
+   *
+   * @async
+   * @param {import("express").Request} req - Express request object.
+   * @param {import("express").Response} res - Express response object.
+   * @returns {Promise<void>} Sends a JSON response with a success message or an error.
+   */
+  async deleteUser(req, res) {
+    try {
+      const userId = req.user.id;
+
+      const user = await this.dao.read(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      await this.dao.delete(userId);
+
+      return res.status(200).json({
+        message: "Profile successfully deleted",
+      });
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") {
+        console.log(`Internal server error: ${err.message}`);
+      }
+      res
+        .status(500)
+        .json({ message: "Internal server error, try again later" });
+    }
+    
+  }
+  /**
+ * Resets the user password using the reset token.
+ *
+ * @async
+ * @param {import("express").Request} req - Express request object.
+ *   Expected body: { token, password, confirmPassword }
+ * @param {import("express").Response} res - Express response object.
+ */
+async resetPassword(req, res) {
+  const { token } = req.params;
+  const { password, confirmPassword } = req.body;
+
+  if (!password || !confirmPassword) {
+    return res.status(400).json({ message: "All fields are required" });
+  }
+
+  if (password !== confirmPassword) {
+    return res.status(400).json({ message: "Passwords don't match" });
+  }
+
+  try {
+    const user = await this.dao.model.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
+
+    user.password = password; // mongoose pre("save") lo hashea
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+
+    // Guardar y capturar errores de validación
+    await user.save();
+
+    await sendMail(
+      user.email,
+      "Password Successfully Reset",
+      `
+        <h2>Hello ${user.firstName},</h2>
+        <p>Your password has been successfully changed.</p>
+        <p>If you did not perform this action, contact support immediately.</p>
+        <p>Best regards,<br/>Lumo Support Team</p>
+      `
+    );
+
+    return res.status(200).json({ message: "Password has been reset successfully" });
+  } catch (err) {
+    // Manejo de errores de validación de Mongoose
+    if (err.name === "ValidationError") {
+      const messages = Object.values(err.errors).map(e => e.message);
+      return res.status(400).json({ message: messages[0] }); // solo mostramos el primer error
+    }
+
+    console.error("Reset password error:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+
+  /**
+   * Sends a password reset email with a unique token valid for 1 hour.
+   *
+   * @async
+   * @param {import("express").Request} req - Express request object. Expected body: { email }
+   * @param {import("express").Response} res - Express response object
+   */
+  async forgotPassword(req, res) {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      const user = await this.dao.findByEmail(email);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Generar token de 1 hora
+      const token = jwt.sign(
+        { id: user._id },
+        process.env.JWT_SECRET,
+        { expiresIn: "1h" }
+      );
+
+      // Guardar token en el usuario
+      user.resetPasswordToken = token;
+      user.resetPasswordExpires = Date.now() + 3600000; // 1 hora
+      await user.save();
+
+      // Crear enlace de recuperación
+      const resetLink = `http://localhost:8080/api/users/reset-password/${token}`;
+
+      // Enviar correo
+      await sendMail(
+        user.email,
+        "Password Reset Request",
+        `
+          <h2>Hello ${user.firstName || "user"},</h2>
+          <p>You requested to reset your password.</p>
+          <p>Click the link below to reset it (valid for 1 hour):</p>
+          <a href="${resetLink}">${resetLink}</a>
+          <p>If you didn't request this, ignore this email.</p>
+        `
+      );
+
+      return res.status(200).json({ message: "Password reset email sent" });
+    } catch (err) {
+      console.error("Forgot password error:", err);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+
+
+  
+}
+
+  
+
+/**
+ * Export a singleton instance of UserController.
+ */
+module.exports = new UserController();
