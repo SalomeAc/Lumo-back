@@ -36,6 +36,10 @@ class UserController extends GlobalController {
    *   - 500: Internal server error
    */
   async registerUser(req, res) {
+    const { password, confirmPassword, ...rest } = req.body;
+    if (password !== confirmPassword) {
+      return res.status(400).json({ message: "Passwords do not match" });
+    }
     const session = await this.dao.model.db.startSession();
     try {
       await session.withTransaction(async () => {
@@ -47,7 +51,7 @@ class UserController extends GlobalController {
         }
 
         // Transaction init
-        const user = await this.dao.create(req.body);
+        const user = await this.dao.create({ ...rest, password });
 
         const listData = {
           title: "Tasks",
