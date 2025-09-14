@@ -38,7 +38,17 @@ class UserController extends GlobalController {
     const session = await this.dao.model.db.startSession();
     try {
       await session.withTransaction(async () => {
-        // Transaction init
+        const password = req.body.password;
+        const confirmPassword = req.body.confirmPassword;
+
+        if (!confirmPassword) {
+          return res.status(400).json({ message: "All fields are required" });
+        }
+
+        if (password !== confirmPassword) {
+          return res.status(400).json({ message: "Passwords don't match" });
+        }
+
         const user = await this.dao.create(req.body);
 
         const listData = {
@@ -178,19 +188,23 @@ class UserController extends GlobalController {
   async updateUserProfile(req, res) {
     try {
       const userId = req.user.id;
+      const password = req.body.password;
+      const confirmPassword = req.body.confirmPassword;
+
+      if (!confirmPassword) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+
+      if (password !== confirmPassword) {
+        return res.status(400).json({ message: "Passwords don't match" });
+      }
 
       const user = await this.dao.read(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const allowedFieldsToUpdate = ["firstName", "lastName", "age", "email"]; // Only allows these fields to be updated.
-      const updates = {};
-      for (const key of allowedFieldsToUpdate) {
-        if (req.body[key] !== undefined) updates[key] = req.body[key];
-      }
-
-      await this.dao.update(userId, updates);
+      await this.dao.update(userId, req.body);
 
       return res.status(200).json({
         message: "Profile successfully updated",

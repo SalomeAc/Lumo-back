@@ -216,7 +216,7 @@ class ListController extends GlobalController {
         return res.status(403).json({ message: "Forbidden action" });
       }
 
-      const tasks = await TaskDAO.getAll({ list: listId });
+      const tasks = await TaskDAO.getTasksByListOrdered(listId);
 
       return res.status(200).json(tasks);
     } catch (err) {
