@@ -267,6 +267,7 @@ class UserController extends GlobalController {
         .json({ message: "Internal server error, try again later" });
     }
   }
+
   /**
    * Resets the user password using the reset token.
    *
@@ -297,11 +298,10 @@ class UserController extends GlobalController {
         return res.status(400).json({ message: "Invalid or expired token" });
       }
 
-      user.password = password; // mongoose pre("save") lo hashea
+      user.password = password;
       user.resetPasswordToken = undefined;
       user.resetPasswordExpires = undefined;
 
-      // Guardar y capturar errores de validación
       await user.save();
 
       await sendMail(
@@ -350,20 +350,16 @@ class UserController extends GlobalController {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Generar token de 1 hora
       const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
         expiresIn: "1h",
       });
 
-      // Guardar token en el usuario
       user.resetPasswordToken = token;
-      user.resetPasswordExpires = Date.now() + 3600000; // 1 hora
+      user.resetPasswordExpires = Date.now() + 3600000;
       await user.save();
 
-      // Crear enlace de recuperación
       const resetLink = `http://localhost:8080/api/users/reset-password/${token}`;
 
-      // Enviar correo
       await sendMail(
         user.email,
         "Password Reset Request",
