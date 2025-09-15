@@ -22,6 +22,39 @@ class ListController extends GlobalController {
   }
 
   /**
+   * Returns all the lists associated to a user.
+   *
+   * The user ID is obtained from the decoded JWT token (`req.user.id`).
+   *
+   * @async
+   * @param {import("express").Request} req - Express request object.
+   * @param {import("express").Response} res - Express response object.
+   * @returns {Promise<void>} Sends a JSON response with the lists associated +
+   * to the user or an error if it failed.
+   */
+  async getUserLists(req, res) {
+    try {
+      const userId = req.user.id;
+
+      const user = await UserDAO.read(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const lists = await this.dao.getAll({ user: userId });
+
+      return res.status(200).json(lists);
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") {
+        console.log(`Internal server error: ${err.message}`);
+      }
+      res
+        .status(500)
+        .json({ message: "Internal server error, try again later" });
+    }
+  }
+
+  /**
    * Creates a new list for the authenticated user.
    *
    * The user ID is obtained from the decoded JWT token (`req.user.id`) and
@@ -216,7 +249,7 @@ class ListController extends GlobalController {
         return res.status(403).json({ message: "Forbidden action" });
       }
 
-      const tasks = await TaskDAO.getAll({ list: listId });
+      const tasks = await TaskDAO.getTasksByListOrdered(listId);
 
       return res.status(200).json(tasks);
     } catch (err) {

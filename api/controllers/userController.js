@@ -46,12 +46,15 @@ class UserController extends GlobalController {
         const password = req.body.password;
         const confirmPassword = req.body.confirmPassword;
 
+        if (!confirmPassword) {
+          return res.status(400).json({ message: "All fields are required" });
+        }
+
         if (password !== confirmPassword) {
           return res.status(400).json({ message: "Passwords don't match" });
         }
 
-        // Transaction init
-        const user = await this.dao.create({ ...rest, password });
+        const user = await this.dao.create(req.body);
 
         const listData = {
           title: "Tasks",
@@ -190,19 +193,23 @@ class UserController extends GlobalController {
   async updateUserProfile(req, res) {
     try {
       const userId = req.user.id;
+      const password = req.body.password;
+      const confirmPassword = req.body.confirmPassword;
+
+      if (!confirmPassword) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+
+      if (password !== confirmPassword) {
+        return res.status(400).json({ message: "Passwords don't match" });
+      }
 
       const user = await this.dao.read(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const allowedFieldsToUpdate = ["firstName", "lastName", "age", "email"]; // Only allows these fields to be updated.
-      const updates = {};
-      for (const key of allowedFieldsToUpdate) {
-        if (req.body[key] !== undefined) updates[key] = req.body[key];
-      }
-
-      await this.dao.update(userId, updates);
+      await this.dao.update(userId, req.body);
 
       return res.status(200).json({
         message: "Profile successfully updated",
@@ -259,69 +266,69 @@ class UserController extends GlobalController {
         .status(500)
         .json({ message: "Internal server error, try again later" });
     }
-    
   }
   /**
- * Resets the user password using the reset token.
- *
- * @async
- * @param {import("express").Request} req - Express request object.
- *   Expected body: { token, password, confirmPassword }
- * @param {import("express").Response} res - Express response object.
- */
-async resetPassword(req, res) {
-  const { token } = req.params;
-  const { password, confirmPassword } = req.body;
+   * Resets the user password using the reset token.
+   *
+   * @async
+   * @param {import("express").Request} req - Express request object.
+   *   Expected body: { token, password, confirmPassword }
+   * @param {import("express").Response} res - Express response object.
+   */
+  async resetPassword(req, res) {
+    const { token } = req.params;
+    const { password, confirmPassword } = req.body;
 
-  if (!password || !confirmPassword) {
-    return res.status(400).json({ message: "All fields are required" });
-  }
-
-  if (password !== confirmPassword) {
-    return res.status(400).json({ message: "Passwords don't match" });
-  }
-
-  try {
-    const user = await this.dao.model.findOne({
-      resetPasswordToken: token,
-      resetPasswordExpires: { $gt: Date.now() },
-    });
-
-    if (!user) {
-      return res.status(400).json({ message: "Invalid or expired token" });
+    if (!password || !confirmPassword) {
+      return res.status(400).json({ message: "All fields are required" });
     }
 
-    user.password = password; // mongoose pre("save") lo hashea
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpires = undefined;
+    if (password !== confirmPassword) {
+      return res.status(400).json({ message: "Passwords don't match" });
+    }
 
-    // Guardar y capturar errores de validación
-    await user.save();
+    try {
+      const user = await this.dao.model.findOne({
+        resetPasswordToken: token,
+        resetPasswordExpires: { $gt: Date.now() },
+      });
 
-    await sendMail(
-      user.email,
-      "Password Successfully Reset",
-      `
+      if (!user) {
+        return res.status(400).json({ message: "Invalid or expired token" });
+      }
+
+      user.password = password; // mongoose pre("save") lo hashea
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpires = undefined;
+
+      // Guardar y capturar errores de validación
+      await user.save();
+
+      await sendMail(
+        user.email,
+        "Password Successfully Reset",
+        `
         <h2>Hello ${user.firstName},</h2>
         <p>Your password has been successfully changed.</p>
         <p>If you did not perform this action, contact support immediately.</p>
         <p>Best regards,<br/>Lumo Support Team</p>
-      `
-    );
+      `,
+      );
 
-    return res.status(200).json({ message: "Password has been reset successfully" });
-  } catch (err) {
-    // Manejo de errores de validación de Mongoose
-    if (err.name === "ValidationError") {
-      const messages = Object.values(err.errors).map(e => e.message);
-      return res.status(400).json({ message: messages[0] }); // solo mostramos el primer error
+      return res
+        .status(200)
+        .json({ message: "Password has been reset successfully" });
+    } catch (err) {
+      // Manejo de errores de validación de Mongoose
+      if (err.name === "ValidationError") {
+        const messages = Object.values(err.errors).map((e) => e.message);
+        return res.status(400).json({ message: messages[0] }); // solo mostramos el primer error
+      }
+
+      console.error("Reset password error:", err);
+      return res.status(500).json({ message: "Internal server error" });
     }
-
-    console.error("Reset password error:", err);
-    return res.status(500).json({ message: "Internal server error" });
   }
-}
-
 
   /**
    * Sends a password reset email with a unique token valid for 1 hour.
@@ -344,11 +351,9 @@ async resetPassword(req, res) {
       }
 
       // Generar token de 1 hora
-      const token = jwt.sign(
-        { id: user._id },
-        process.env.JWT_SECRET,
-        { expiresIn: "1h" }
-      );
+      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+        expiresIn: "1h",
+      });
 
       // Guardar token en el usuario
       user.resetPasswordToken = token;
@@ -368,7 +373,7 @@ async resetPassword(req, res) {
           <p>Click the link below to reset it (valid for 1 hour):</p>
           <a href="${resetLink}">${resetLink}</a>
           <p>If you didn't request this, ignore this email.</p>
-        `
+        `,
       );
 
       return res.status(200).json({ message: "Password reset email sent" });
@@ -377,13 +382,7 @@ async resetPassword(req, res) {
       return res.status(500).json({ message: "Internal server error" });
     }
   }
-
-
-
-  
 }
-
-  
 
 /**
  * Export a singleton instance of UserController.

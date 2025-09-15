@@ -46,7 +46,7 @@ const UserSchema = new mongoose.Schema({
 });
 
 /**
- * Hashes the password after validating all fields.
+ * Hashes the password after validating all fields just before saving the document.
  */
 UserSchema.pre("save", async function (next) {
   if (this.isModified("password")) {
@@ -58,6 +58,24 @@ UserSchema.pre("save", async function (next) {
 });
 
 
+
+/**
+ * Hashes the password after validating all fields just before updating the document.
+ */
+UserSchema.pre("findOneAndUpdate", async function (next) {
+  let update = this.getUpdate();
+
+  if (update.$set) {
+    update = update.$set;
+  }
+
+  if (update.password) {
+    update.password = await bcrypt.hash(update.password, 10);
+    this.setUpdate(update); // Sobreescribimos con el nuevo hash
+  }
+
+  next();
+});
 
 /**
  * Mongoose model for the User collection.

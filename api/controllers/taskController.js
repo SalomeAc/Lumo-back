@@ -104,7 +104,16 @@ class TaskController extends GlobalController {
         return res.status(403).json({ message: "Forbidden action" });
       }
 
-      await this.dao.update(taskId, { title: req.body.title });
+      const allowedFields = ["title", "description", "status", "dueDate"];
+      const updates = {};
+
+      for (const field of allowedFields) {
+        if (req.body[field] !== undefined) {
+          updates[field] = req.body[field];
+        }
+      }
+
+      await this.dao.update(taskId, updates);
 
       return res.status(200).json({
         message: "Task successfully updated",
