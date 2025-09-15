@@ -3,6 +3,7 @@ const UserDAO = require("../dao/userDAO");
 const ListDAO = require("../dao/listDAO");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
+const { sendMail } = require("../utils/mailer");
 
 /**
  * Controller class for managing User resources.
@@ -35,6 +36,10 @@ class UserController extends GlobalController {
    *   - 500: Internal server error
    */
   async registerUser(req, res) {
+    const { password, confirmPassword, ...rest } = req.body;
+    if (password !== confirmPassword) {
+      return res.status(400).json({ message: "Passwords do not match" });
+    }
     const session = await this.dao.model.db.startSession();
     try {
       await session.withTransaction(async () => {
@@ -260,6 +265,121 @@ class UserController extends GlobalController {
       res
         .status(500)
         .json({ message: "Internal server error, try again later" });
+    }
+  }
+  /**
+   * Resets the user password using the reset token.
+   *
+   * @async
+   * @param {import("express").Request} req - Express request object.
+   *   Expected body: { token, password, confirmPassword }
+   * @param {import("express").Response} res - Express response object.
+   */
+  async resetPassword(req, res) {
+    const { token } = req.params;
+    const { password, confirmPassword } = req.body;
+
+    if (!password || !confirmPassword) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ message: "Passwords don't match" });
+    }
+
+    try {
+      const user = await this.dao.model.findOne({
+        resetPasswordToken: token,
+        resetPasswordExpires: { $gt: Date.now() },
+      });
+
+      if (!user) {
+        return res.status(400).json({ message: "Invalid or expired token" });
+      }
+
+      user.password = password; // mongoose pre("save") lo hashea
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpires = undefined;
+
+      // Guardar y capturar errores de validación
+      await user.save();
+
+      await sendMail(
+        user.email,
+        "Password Successfully Reset",
+        `
+        <h2>Hello ${user.firstName},</h2>
+        <p>Your password has been successfully changed.</p>
+        <p>If you did not perform this action, contact support immediately.</p>
+        <p>Best regards,<br/>Lumo Support Team</p>
+      `,
+      );
+
+      return res
+        .status(200)
+        .json({ message: "Password has been reset successfully" });
+    } catch (err) {
+      // Manejo de errores de validación de Mongoose
+      if (err.name === "ValidationError") {
+        const messages = Object.values(err.errors).map((e) => e.message);
+        return res.status(400).json({ message: messages[0] }); // solo mostramos el primer error
+      }
+
+      console.error("Reset password error:", err);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  /**
+   * Sends a password reset email with a unique token valid for 1 hour.
+   *
+   * @async
+   * @param {import("express").Request} req - Express request object. Expected body: { email }
+   * @param {import("express").Response} res - Express response object
+   */
+  async forgotPassword(req, res) {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      const user = await this.dao.findByEmail(email);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Generar token de 1 hora
+      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+        expiresIn: "1h",
+      });
+
+      // Guardar token en el usuario
+      user.resetPasswordToken = token;
+      user.resetPasswordExpires = Date.now() + 3600000; // 1 hora
+      await user.save();
+
+      // Crear enlace de recuperación
+      const resetLink = `http://localhost:8080/api/users/reset-password/${token}`;
+
+      // Enviar correo
+      await sendMail(
+        user.email,
+        "Password Reset Request",
+        `
+          <h2>Hello ${user.firstName || "user"},</h2>
+          <p>You requested to reset your password.</p>
+          <p>Click the link below to reset it (valid for 1 hour):</p>
+          <a href="${resetLink}">${resetLink}</a>
+          <p>If you didn't request this, ignore this email.</p>
+        `,
+      );
+
+      return res.status(200).json({ message: "Password reset email sent" });
+    } catch (err) {
+      console.error("Forgot password error:", err);
+      return res.status(500).json({ message: "Internal server error" });
     }
   }
 }
