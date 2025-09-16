@@ -10,14 +10,14 @@ const TaskSchema = new mongoose.Schema(
   {
     title: {
       type: String,
-      required: [true, "A title is required"],
+      required: [true, "El titulo es requerido"],
       trim: true,
-      maxlength: [30, "The title cannot have more than 30 characters"],
+      maxlength: [30, "El título no puede tener más de 30 caracteres"],
     },
     description: {
       type: String,
       trim: true,
-      maxlength: [200, "The description cannot have more than 200 characters"],
+      maxlength: [200, "La descripción no puede tener más de 200 caracteres"],
     },
     status: {
       type: String,

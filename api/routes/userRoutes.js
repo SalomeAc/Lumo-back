@@ -38,8 +38,12 @@ router.post("/login", (req, res) => UserController.loginUser(req, res));
 /**
  * @route PUT /api/users/update-profile
  * @description Update an existing user by ID.
- * @body {string} [username] - Updated username (optional).
- * @body {string} [password] - Updated password (optional).
+ * @body {string} [firstName] - The first name of the user (optional).
+ * @body {string} [lastName] - The last name of the user (optional).
+ * @body {int} [age] - The age of the user (optional).
+ * @body {string} [email] - The email of the user (optional).
+ * @body {string} [password] - The password of the user (optional).
+ * @body {string} [confirmPassword] - The password of the user (optional).
  * @access Private (requires valid JWT)
  */
 router.put("/update-profile", authenticateToken, (req, res) =>

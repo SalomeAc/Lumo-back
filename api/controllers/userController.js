@@ -196,8 +196,10 @@ class UserController extends GlobalController {
       const password = req.body.password;
       const confirmPassword = req.body.confirmPassword;
 
-      if (!confirmPassword) {
-        return res.status(400).json({ message: "All fields are required" });
+      if (password) {
+        if (!confirmPassword) {
+          return res.status(400).json({ message: "All fields are required" });
+        }
       }
 
       if (password !== confirmPassword) {
