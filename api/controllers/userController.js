@@ -276,6 +276,10 @@ class UserController extends GlobalController {
    * @param {import("express").Response} res - Express response object.
    */
   async resetPassword(req, res) {
+
+    console.log("RESET BODY:", req.body);
+    console.log("RESET TOKEN:", req.params.token);
+    
     const { token } = req.params;
     const { password, confirmPassword } = req.body;
 
