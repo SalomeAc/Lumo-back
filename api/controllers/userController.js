@@ -38,10 +38,10 @@ class UserController extends GlobalController {
   async registerUser(req, res) {
     const { password, confirmPassword, ...rest } = req.body;
     if (!password || !confirmPassword) {
-      return res.status(400).json({ message: "All fields are required" });
+  return res.status(400).json({ message: "Todos los campos son obligatorios" });
     }
     if (password !== confirmPassword) {
-      return res.status(400).json({ message: "Passwords do not match" });
+  return res.status(400).json({ message: "Las contraseñas no coinciden" });
     }
     let session;
     try {
@@ -57,14 +57,14 @@ class UserController extends GlobalController {
         };
         await ListDAO.create(listData, { session });
       });
-      return res.status(201).json({ message: "Registered successfully" });
+  return res.status(201).json({ message: "Registro exitoso" });
     } catch (err) {
       if (err.name === "ValidationError") {
         const firstMessage = Object.values(err.errors)[0].message;
         return res.status(400).json({ message: firstMessage });
       }
       if (err.code === 11000) {
-        return res.status(409).json({ message: "Email already registered" });
+  return res.status(409).json({ message: "El correo ya está registrado" });
       }
       if (process.env.NODE_ENV === "development") {
         console.log(`Internal server error: ${err.message}`);
@@ -94,21 +94,21 @@ class UserController extends GlobalController {
       if (!email || !password) {
         return res
           .status(400)
-          .json({ message: "Email and password are required" });
+          .json({ message: "Correo y contraseña son obligatorios" });
       }
 
       const user = await this.dao.findByEmail(email);
       if (!user) {
         return res
           .status(401)
-          .json({ message: "Email or password are incorrect" });
+          .json({ message: "Correo o contraseña incorrectos" });
       }
 
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
         return res
           .status(401)
-          .json({ message: "Email or password are incorrect" });
+          .json({ message: "Correo o contraseña incorrectos" });
       }
 
       const token = jwt.sign(
@@ -147,14 +147,14 @@ class UserController extends GlobalController {
 
       const user = await this.dao.read(userId);
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+  return res.status(404).json({ message: "Usuario no encontrado" });
       }
 
       return res.status(200).json({
-        firstName: user.firstName,
-        lastName: user.lastName,
-        age: user.age,
-        email: user.email,
+  firstName: user.firstName,
+  lastName: user.lastName,
+  age: user.age,
+  email: user.email,
       });
     } catch (err) {
       if (process.env.NODE_ENV === "development") {
@@ -187,23 +187,23 @@ class UserController extends GlobalController {
 
       if (password) {
         if (!confirmPassword) {
-          return res.status(400).json({ message: "All fields are required" });
+          return res.status(400).json({ message: "Todos los campos son obligatorios" });
         }
       }
 
       if (password !== confirmPassword) {
-        return res.status(400).json({ message: "Passwords don't match" });
+  return res.status(400).json({ message: "Las contraseñas no coinciden" });
       }
 
       const user = await this.dao.read(userId);
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+  return res.status(404).json({ message: "Usuario no encontrado" });
       }
 
       await this.dao.update(userId, req.body);
 
       return res.status(200).json({
-        message: "Profile successfully updated",
+  message: "Perfil actualizado exitosamente",
       });
     } catch (err) {
       if (err.name === "ValidationError") {
@@ -212,7 +212,7 @@ class UserController extends GlobalController {
       }
 
       if (err.code === 11000) {
-        return res.status(409).json({ message: "Email already registered" });
+  return res.status(409).json({ message: "El correo ya está registrado" });
       }
 
       if (process.env.NODE_ENV === "development") {
@@ -241,13 +241,13 @@ class UserController extends GlobalController {
 
       const user = await this.dao.read(userId);
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+  return res.status(404).json({ message: "Usuario no encontrado" });
       }
 
       await this.dao.delete(userId);
 
       return res.status(200).json({
-        message: "Profile successfully deleted",
+  message: "Perfil eliminado exitosamente",
       });
     } catch (err) {
       if (process.env.NODE_ENV === "development") {
@@ -272,11 +272,11 @@ class UserController extends GlobalController {
     const { password, confirmPassword } = req.body;
 
     if (!password || !confirmPassword) {
-      return res.status(400).json({ message: "All fields are required" });
+  return res.status(400).json({ message: "Todos los campos son obligatorios" });
     }
 
     if (password !== confirmPassword) {
-      return res.status(400).json({ message: "Passwords don't match" });
+  return res.status(400).json({ message: "Las contraseñas no coinciden" });
     }
 
     try {
@@ -286,7 +286,7 @@ class UserController extends GlobalController {
       });
 
       if (!user) {
-        return res.status(400).json({ message: "Invalid or expired token" });
+  return res.status(400).json({ message: "Token inválido o expirado" });
       }
 
       user.password = password;
@@ -307,8 +307,8 @@ class UserController extends GlobalController {
       );
 
       return res
-        .status(200)
-        .json({ message: "Password has been reset successfully" });
+  .status(200)
+  .json({ message: "Contraseña restablecida exitosamente" });
     } catch (err) {
       // Manejo de errores de validación de Mongoose
       if (err.name === "ValidationError") {
@@ -333,12 +333,12 @@ class UserController extends GlobalController {
       const { email } = req.body;
 
       if (!email) {
-        return res.status(400).json({ message: "Email is required" });
+  return res.status(400).json({ message: "El correo es obligatorio" });
       }
 
       const user = await this.dao.findByEmail(email);
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+  return res.status(404).json({ message: "Usuario no encontrado" });
       }
 
       const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
@@ -363,7 +363,7 @@ class UserController extends GlobalController {
         `,
       );
 
-      return res.status(200).json({ message: "Password reset email sent" });
+  return res.status(200).json({ message: "Correo de restablecimiento enviado" });
     } catch (err) {
       console.error("Forgot password error:", err);
       return res.status(500).json({ message: "Internal server error" });
