@@ -37,52 +37,41 @@ class UserController extends GlobalController {
    */
   async registerUser(req, res) {
     const { password, confirmPassword, ...rest } = req.body;
+    if (!password || !confirmPassword) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
     if (password !== confirmPassword) {
       return res.status(400).json({ message: "Passwords do not match" });
     }
-    const session = await this.dao.model.db.startSession();
+    let session;
     try {
+      session = await this.dao.model.db.startSession();
+      let user;
       await session.withTransaction(async () => {
-        const password = req.body.password;
-        const confirmPassword = req.body.confirmPassword;
-
-        if (!confirmPassword) {
-          return res.status(400).json({ message: "All fields are required" });
-        }
-
-        if (password !== confirmPassword) {
-          return res.status(400).json({ message: "Passwords don't match" });
-        }
-
-        const user = await this.dao.create(req.body);
-
+        // Intentar crear el usuario
+        user = await this.dao.create({ ...rest, password });
+        // Si la creación del usuario falla, lanzará error y no se creará la lista
         const listData = {
           title: "Tasks",
           user: user._id,
         };
-
         await ListDAO.create(listData, { session });
       });
-
       return res.status(201).json({ message: "Registered successfully" });
     } catch (err) {
       if (err.name === "ValidationError") {
         const firstMessage = Object.values(err.errors)[0].message;
         return res.status(400).json({ message: firstMessage });
       }
-
       if (err.code === 11000) {
         return res.status(409).json({ message: "Email already registered" });
       }
-
       if (process.env.NODE_ENV === "development") {
         console.log(`Internal server error: ${err.message}`);
       }
-      res
-        .status(500)
-        .json({ message: "Internal server error, try again later" });
+      return res.status(500).json({ message: "Internal server error, try again later" });
     } finally {
-      session.endSession(); // Transaction end
+      if (session) session.endSession();
     }
   }
 
