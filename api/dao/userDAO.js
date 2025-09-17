@@ -1,4 +1,6 @@
 const User = require("../models/user");
+const List = require("../models/list");
+const Task = require("../models/task");
 const GlobalDAO = require("./globalDAO");
 
 /**
@@ -28,6 +30,26 @@ class UserDAO extends GlobalDAO {
    */
   async findByEmail(email) {
     return this.model.findOne({ email });
+  }
+
+  /**
+   * Overrides delete method from GlobalDAO.
+   * - Deletes all lists associated to the user.
+   * - Deletes all tasks associated to the user.
+   * - Finally, deletes the user.
+   *
+   * @async
+   * @param {string} userId - ID of the user to be deleted.
+   * @returns {Promise<Object|null>} Doc of the user just deleted, null if the doc didn't exist.
+   */
+  async delete(userId) {
+    await List.deleteMany({ user: userId });
+
+    await Task.deleteMany({ user: userId });
+
+    const deletedUser = await this.model.findByIdAndDelete(userId);
+
+    return deletedUser;
   }
 }
 

@@ -10,9 +10,9 @@ const ListSchema = new mongoose.Schema(
   {
     title: {
       type: String,
-      required: [true, "A title is required"],
+      required: [true, "El título es requerido"],
       trim: true,
-      maxlength: [30, "The title cannot have more than 30 characters"],
+      maxlength: [30, "El título no puede tener más de 30 caracteres"],
     },
     user: {
       type: mongoose.Schema.Types.ObjectId,
