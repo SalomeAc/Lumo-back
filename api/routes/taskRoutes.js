@@ -5,6 +5,15 @@ const authenticateToken = require("../middlewares/auth");
 const TaskController = require("../controllers/taskController");
 
 /**
+ * @route POST /api/tasks/
+ * @description Returns all the tasks associated to the user sorted by status.
+ * @access Private (requires valid JWT)
+ */
+router.get("/", authenticateToken, (req, res) =>
+  TaskController.getKanbanTasks(req, res),
+);
+
+/**
  * @route POST /api/tasks
  * @description Create a new task.
  * @body {string} title - The title of the task.
