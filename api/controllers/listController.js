@@ -38,7 +38,7 @@ class ListController extends GlobalController {
 
       const user = await UserDAO.read(userId);
       if (!user) {
-  return res.status(404).json({ message: "Usuario no encontrado" });
+        return res.status(404).json({ message: "Usuario no encontrado" });
       }
 
       const lists = await this.dao.getAll({ user: userId });
@@ -81,7 +81,7 @@ class ListController extends GlobalController {
       await this.dao.create({ ...req.body, user: userId });
 
       return res.status(200).json({
-  message: "Lista creada exitosamente",
+        message: "Lista creada exitosamente",
       });
     } catch (err) {
       if (err.name === "ValidationError") {
@@ -124,22 +124,22 @@ class ListController extends GlobalController {
 
       const user = await UserDAO.read(userId);
       if (!user) {
-  return res.status(404).json({ message: "Usuario no encontrado" });
+        return res.status(404).json({ message: "Usuario no encontrado" });
       }
 
       const list = await this.dao.read(listId);
       if (!list) {
-  return res.status(404).json({ message: "Lista no encontrada" });
+        return res.status(404).json({ message: "Lista no encontrada" });
       }
 
       if (list.user.toString() !== userId) {
-  return res.status(403).json({ message: "Acción prohibida" });
+        return res.status(403).json({ message: "Acción prohibida" });
       }
 
       await this.dao.update(listId, { title: req.body.title });
 
       return res.status(200).json({
-  message: "Lista actualizada exitosamente",
+        message: "Lista actualizada exitosamente",
       });
     } catch (err) {
       if (err.name === "ValidationError") {
@@ -182,22 +182,22 @@ class ListController extends GlobalController {
 
       const user = await UserDAO.read(userId);
       if (!user) {
-  return res.status(404).json({ message: "Usuario no encontrado" });
+        return res.status(404).json({ message: "Usuario no encontrado" });
       }
 
       const list = await this.dao.read(listId);
       if (!list) {
-  return res.status(404).json({ message: "Lista no encontrada" });
+        return res.status(404).json({ message: "Lista no encontrada" });
       }
 
       if (list.user.toString() !== userId) {
-  return res.status(403).json({ message: "Acción prohibida" });
+        return res.status(403).json({ message: "Acción prohibida" });
       }
 
       await this.dao.delete(listId);
 
       return res.status(200).json({
-  message: "Lista eliminada exitosamente",
+        message: "Lista eliminada exitosamente",
       });
     } catch (err) {
       if (process.env.NODE_ENV === "development") {
@@ -237,16 +237,16 @@ class ListController extends GlobalController {
 
       const user = await UserDAO.read(userId);
       if (!user) {
-  return res.status(404).json({ message: "Usuario no encontrado" });
+        return res.status(404).json({ message: "Usuario no encontrado" });
       }
 
       const list = await this.dao.read(listId);
       if (!list) {
-  return res.status(404).json({ message: "Lista no encontrada" });
+        return res.status(404).json({ message: "Lista no encontrada" });
       }
 
       if (list.user.toString() !== userId) {
-  return res.status(403).json({ message: "Acción prohibida" });
+        return res.status(403).json({ message: "Acción prohibida" });
       }
 
       const tasks = await TaskDAO.getTasksByListOrdered(listId);
