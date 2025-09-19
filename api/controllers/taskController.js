@@ -179,6 +179,49 @@ class TaskController extends GlobalController {
         .json({ message: "Internal server error, try again later" });
     }
   }
+
+  /**
+   * Retrieve all tasks by status.
+   *
+   * Validates that the requesting user exists, then retrieves all tasks by status.
+   *
+   * @async
+   * @function getKanbanTasks
+   * @param {import("express").Request} req - Express request object.
+   * @param {Object} req.user - Authenticated user data.
+   * @param {string} req.user.id - ID of the authenticated user.
+   * @param {Object} req.params - URL parameters.
+   * @param {import("express").Response} res - Express response object.
+   * @returns {Promise<void>} Responds with:
+   * - 200 and an array of tasks if successful.
+   * - 404 if the user does not exist.
+   * - 500 if an internal server error occurs.
+   */
+  async getKanbanTasks(req, res) {
+    try {
+      const userId = req.user.id;
+
+      const user = await UserDAO.read(userId);
+      if (!user) {
+        return res.status(404).json({ message: "Usuario no encontrado" });
+      }
+
+      const tasks = await this.dao.getAll({ user: userId });
+
+      const ongoingTasks = tasks.filter((t) => t.status === "ongoing");
+      const unassignedTasks = tasks.filter((t) => t.status === "unassigned");
+      const doneTasks = tasks.filter((t) => t.status === "done");
+
+      return res.status(200).json({ ongoingTasks, unassignedTasks, doneTasks });
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") {
+        console.log(`Internal server error: ${err.message}`);
+      }
+      res
+        .status(500)
+        .json({ message: "Internal server error, try again later" });
+    }
+  }
 }
 
 /**
