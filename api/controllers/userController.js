@@ -368,7 +368,8 @@ class UserController extends GlobalController {
       const frontendBase =
         process.env.FRONTEND_URL || "http://localhost:5173";
       // Tu página de reset debe leer ?token=...
-      const resetLink = `${frontendBase}/reset-password/?token=${encodeURIComponent(token)}`;
+      //const resetLink = `${frontendBase}/reset-password/?token=${encodeURIComponent(token)}`; CAMBIAR SI HAY DESPLIEGUE
+      const resetLink = `http://localhost:5173/reset-password/?token=${encodeURIComponent(token)}`;
 
       // Enviar correo
       await sendMail(
