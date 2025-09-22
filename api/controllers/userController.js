@@ -189,16 +189,12 @@ class UserController extends GlobalController {
       const password = req.body.password;
       const confirmPassword = req.body.confirmPassword;
 
-      if (!confirmPassword) {
-        return res
-          .status(400)
-          .json({ message: "Todos los campos son requeridos" });
-      }
-
-      if (password !== confirmPassword) {
-        return res
-          .status(400)
-          .json({ message: "Las contraseñas no coinciden" });
+      if (password) {
+        if (password !== confirmPassword) {
+          return res
+            .status(400)
+            .json({ message: "Las contraseñas no coinciden" });
+        }
       }
 
       const user = await this.dao.read(userId);
