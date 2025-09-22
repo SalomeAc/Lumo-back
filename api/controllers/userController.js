@@ -299,21 +299,20 @@ class UserController extends GlobalController {
         return res.status(400).json({ message: "Token no válida o expirada" });
       }
 
-      user.password = password; // mongoose pre("save") lo hashea
+      user.password = password;
       user.resetPasswordToken = undefined;
       user.resetPasswordExpires = undefined;
 
-      // Guardar y capturar errores de validación
       await user.save();
 
       await sendMail(
         user.email,
-        "Password Successfully Reset",
+        "Contraseña exitosamente cambiada",
         `
-        <h2>Hello ${user.firstName},</h2>
-        <p>Your password has been successfully changed.</p>
-        <p>If you did not perform this action, contact support immediately.</p>
-        <p>Best regards,<br/>Lumo Support Team</p>
+        <h2>Hola ${user.firstName},</h2>
+        <p>Tu contraseña ha sido exitosamente cambiada.</p>
+        <p>Si no fuiste tú el que realizó esta acción, por favor contactanos.</p>
+        <p>Saludos,<br/>Soporte de Lumo</p>
       `,
       );
 
@@ -321,10 +320,9 @@ class UserController extends GlobalController {
         .status(200)
         .json({ message: "Password has been reset successfully" });
     } catch (err) {
-      // Manejo de errores de validación de Mongoose
       if (err.name === "ValidationError") {
         const messages = Object.values(err.errors).map((e) => e.message);
-        return res.status(400).json({ message: messages[0] }); // solo mostramos el primer error
+        return res.status(400).json({ message: messages[0] });
       }
 
       console.error("Reset password error:", err);
@@ -360,11 +358,9 @@ class UserController extends GlobalController {
       user.resetPasswordExpires = Date.now() + 3600000; // 1 hora
       await user.save();
 
-      const frontendBase = process.env.FRONTEND_URL || "http://localhost:5173";
-      //const resetLink = `${frontendBase}/reset-password/?token=${encodeURIComponent(token)}`; CAMBIAR SI HAY DESPLIEGUE
-      const resetLink = `http://localhost:5173/reset-password/?token=${encodeURIComponent(token)}`;
+      const frontendBase = process.env.FRONTEND_URL;
+      const resetLink = `${frontendBase}/reset-password/?token=${encodeURIComponent(token)}`;
 
-      // Enviar correo
       await sendMail(
         user.email,
         "Recuperar contraseña",
@@ -381,7 +377,7 @@ class UserController extends GlobalController {
         .status(200)
         .json({ message: "Email de recuperar contraseña enviado" });
     } catch (err) {
-      console.error("Forgot password error:", err);
+      console.error("Error recuperar contraseña:", err);
       return res.status(500).json({ message: "Internal server error" });
     }
   }
