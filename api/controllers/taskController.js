@@ -41,16 +41,16 @@ class TaskController extends GlobalController {
 
       const user = await UserDAO.read(userId);
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+        return res.status(404).json({ message: "Usuario no encontrado" });
       }
 
       const list = await ListDAO.read(listId);
       if (!list) {
-        return res.status(404).json({ message: "List not found" });
+        return res.status(404).json({ message: "Lista no encontrada" });
       }
 
       if (list.user.toString() !== userId) {
-        return res.status(403).json({ message: "Forbidden action" });
+        return res.status(403).json({ message: "Acción prohibida" });
       }
 
       await this.dao.create({ ...req.body, list: listId, user: userId });
@@ -92,16 +92,16 @@ class TaskController extends GlobalController {
 
       const user = await UserDAO.read(userId);
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+        return res.status(404).json({ message: "Usuario no encontrado" });
       }
 
       const task = await this.dao.read(taskId);
       if (!task) {
-        return res.status(404).json({ message: "Task not found" });
+        return res.status(404).json({ message: "Tarea no encontrada" });
       }
 
       if (task.user.toString() !== userId) {
-        return res.status(403).json({ message: "Forbidden action" });
+        return res.status(403).json({ message: "Acción prohibida" });
       }
 
       const allowedFields = ["title", "description", "status", "dueDate"];
@@ -116,7 +116,7 @@ class TaskController extends GlobalController {
       await this.dao.update(taskId, updates);
 
       return res.status(200).json({
-        message: "Task successfully updated",
+        message: "Tarea exitosamente actualizada",
       });
     } catch (err) {
       if (err.name === "ValidationError") {
@@ -153,22 +153,22 @@ class TaskController extends GlobalController {
 
       const user = await UserDAO.read(userId);
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+        return res.status(404).json({ message: "Usuario no encontrado" });
       }
 
       const task = await this.dao.read(taskId);
       if (!task) {
-        return res.status(404).json({ message: "task not found" });
+        return res.status(404).json({ message: "Tarea no encontrada" });
       }
 
       if (task.user.toString() !== userId) {
-        return res.status(403).json({ message: "Forbidden action" });
+        return res.status(403).json({ message: "Acción prohibida" });
       }
 
       await this.dao.delete(taskId);
 
       return res.status(200).json({
-        message: "Task successfully deleted",
+        message: "Tarea creada exitosamente",
       });
     } catch (err) {
       if (process.env.NODE_ENV === "development") {

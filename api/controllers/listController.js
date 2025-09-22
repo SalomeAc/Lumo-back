@@ -75,7 +75,7 @@ class ListController extends GlobalController {
 
       const user = await UserDAO.read(userId);
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+        return res.status(404).json({ message: "Usuario no encontrado" });
       }
 
       await this.dao.create({ ...req.body, user: userId });
