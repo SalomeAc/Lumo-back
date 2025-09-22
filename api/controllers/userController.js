@@ -358,7 +358,7 @@ class UserController extends GlobalController {
       user.resetPasswordExpires = Date.now() + 3600000; // 1 hora
       await user.save();
 
-      const frontendBase = process.env.FRONTEND_URL;
+      const frontendBase = 'https://lumo-front-jtug.vercel.app';
       const resetLink = `${frontendBase}/reset-password/?token=${encodeURIComponent(token)}`;
 
       await sendMail(
